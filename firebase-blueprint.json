@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account, subscription plan, and AI generation usage quota",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated user's Google UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "plan": { "type": "string", "enum": ["free", "starter", "agency"], "description": "Active subscription tier" },
+        "generationsUsed": { "type": "integer", "description": "Number of AI content generations used in current billing cycle" },
+        "generationLimit": { "type": "integer", "description": "Total monthly generation limit (10 for free, 100 for starter, 999 for agency)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "email", "plan", "generationsUsed", "generationLimit", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Small business profile and marketing tone settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "name": { "type": "string", "description": "Business or store name" },
+        "category": { "type": "string", "description": "Category such as Restaurant, Clothing, Salon, Fitness, Tutor, Freelancer" },
+        "city": { "type": "string", "description": "City or locality name" },
+        "targetAudience": { "type": "string", "description": "Target customer demographic" },
+        "brandTone": { "type": "string", "description": "Marketing brand tone e.g. Warm, Energetic, Professional, Festive, Casual" },
+        "language": { "type": "string", "enum": ["English", "Hindi", "Bengali"], "description": "Primary marketing language" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "name", "category", "city", "targetAudience", "brandTone", "language", "createdAt", "updatedAt"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Generated marketing campaign or week plan package",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "businessId": { "type": "string", "description": "Associated business document ID" },
+        "businessName": { "type": "string", "description": "Cached business name" },
+        "title": { "type": "string", "description": "Campaign title or offer headline" },
+        "campaignType": { "type": "string", "description": "Type such as weekly_calendar, festival_special, promo_post, or launch" },
+        "language": { "type": "string", "description": "Language of the generated content" },
+        "summary": { "type": "string", "description": "Brief campaign description or overview" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "businessId", "businessName", "title", "campaignType", "language", "summary", "createdAt", "updatedAt"]
+    },
+    "MarketingPost": {
+      "title": "MarketingPost",
+      "description": "Individual marketing caption, calendar day post, or festival promotional message",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "businessId": { "type": "string", "description": "Associated business document ID" },
+        "campaignId": { "type": "string", "description": "Optional parent campaign ID" },
+        "dayOfWeek": { "type": "string", "description": "Day e.g. Monday, Tuesday, or special occasion" },
+        "theme": { "type": "string", "description": "Post theme or hook e.g. Behind the Scenes, Weekend Special" },
+        "caption": { "type": "string", "description": "Full marketing post caption" },
+        "hashtags": { "type": "string", "description": "Localized hashtags" },
+        "callToAction": { "type": "string", "description": "Call to action text" },
+        "visualIdea": { "type": "string", "description": "Suggested photo/video visual direction" },
+        "bestTime": { "type": "string", "description": "Recommended posting time" },
+        "language": { "type": "string", "description": "Content language" },
+        "isSaved": { "type": "boolean", "description": "Whether bookmarked or saved" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "businessId", "dayOfWeek", "theme", "caption", "hashtags", "callToAction", "visualIdea", "bestTime", "language", "isSaved", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/user_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile with plan details and AI quota tracking"
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/Business" },
+      "description": "Registered small business profiles owned by user"
+    },
+    "/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Generated marketing campaigns"
+    },
+    "/calendar_posts/{postId}": {
+      "schema": { "$ref": "#/entities/MarketingPost" },
+      "description": "Scheduled weekly content calendar posts and saved captions"
+    }
+  }
+}

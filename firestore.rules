@@ -1,0 +1,158 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.email is string && data.email.size() <= 128 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             data.plan in ['free', 'starter', 'agency'] &&
+             data.generationsUsed is int && data.generationsUsed >= 0 &&
+             data.generationLimit is int && data.generationLimit > 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBusiness(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 60 &&
+             data.city is string && data.city.size() > 0 && data.city.size() <= 60 &&
+             data.targetAudience is string && data.targetAudience.size() > 0 && data.targetAudience.size() <= 200 &&
+             data.brandTone is string && data.brandTone.size() > 0 && data.brandTone.size() <= 100 &&
+             data.language is string && data.language in ['English', 'Hindi', 'Bengali'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCampaign(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 128 &&
+             data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+             data.campaignType is string && data.campaignType.size() > 0 && data.campaignType.size() <= 50 &&
+             data.language is string && data.language.size() > 0 && data.language.size() <= 30 &&
+             data.summary is string && data.summary.size() <= 1000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMarketingPost(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.businessId is string && data.businessId.size() > 0 && data.businessId.size() <= 128 &&
+             (!('campaignId' in data) || (data.campaignId is string && data.campaignId.size() <= 128)) &&
+             data.dayOfWeek is string && data.dayOfWeek.size() > 0 && data.dayOfWeek.size() <= 30 &&
+             data.theme is string && data.theme.size() > 0 && data.theme.size() <= 100 &&
+             data.caption is string && data.caption.size() > 0 && data.caption.size() <= 4000 &&
+             data.hashtags is string && data.hashtags.size() <= 500 &&
+             data.callToAction is string && data.callToAction.size() <= 300 &&
+             data.visualIdea is string && data.visualIdea.size() <= 500 &&
+             data.bestTime is string && data.bestTime.size() <= 50 &&
+             data.language is string && data.language.size() > 0 && data.language.size() <= 30 &&
+             data.isSaved is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // User Profiles
+    match /user_profiles/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'email', 'plan', 'generationsUsed', 'generationLimit', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'email', 'displayName', 'plan', 'generationsUsed', 'generationLimit', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'plan', 'generationsUsed', 'generationLimit', 'updatedAt']);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Businesses
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && isValidId(businessId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() && isValidId(businessId) &&
+                       incoming().keys().hasAll(['userId', 'name', 'category', 'city', 'targetAudience', 'brandTone', 'language', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'name', 'category', 'city', 'targetAudience', 'brandTone', 'language', 'createdAt', 'updatedAt']) &&
+                       isValidBusiness(incoming());
+
+      allow update: if isSignedIn() && isValidId(businessId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidBusiness(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'city', 'targetAudience', 'brandTone', 'language', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(businessId) && resource.data.userId == request.auth.uid;
+    }
+
+    // Campaigns
+    match /campaigns/{campaignId} {
+      allow get: if isSignedIn() && isValidId(campaignId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() && isValidId(campaignId) &&
+                       incoming().keys().hasAll(['userId', 'businessId', 'businessName', 'title', 'campaignType', 'language', 'summary', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'businessId', 'businessName', 'title', 'campaignType', 'language', 'summary', 'createdAt', 'updatedAt']) &&
+                       isValidCampaign(incoming());
+
+      allow update: if isSignedIn() && isValidId(campaignId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidCampaign(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['businessName', 'title', 'campaignType', 'language', 'summary', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(campaignId) && resource.data.userId == request.auth.uid;
+    }
+
+    // Calendar & Marketing Posts
+    match /calendar_posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn() && isValidId(postId) &&
+                       incoming().keys().hasAll(['userId', 'businessId', 'dayOfWeek', 'theme', 'caption', 'hashtags', 'callToAction', 'visualIdea', 'bestTime', 'language', 'isSaved', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'businessId', 'campaignId', 'dayOfWeek', 'theme', 'caption', 'hashtags', 'callToAction', 'visualIdea', 'bestTime', 'language', 'isSaved', 'createdAt', 'updatedAt']) &&
+                       isValidMarketingPost(incoming());
+
+      allow update: if isSignedIn() && isValidId(postId) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidMarketingPost(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['campaignId', 'dayOfWeek', 'theme', 'caption', 'hashtags', 'callToAction', 'visualIdea', 'bestTime', 'language', 'isSaved', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(postId) && resource.data.userId == request.auth.uid;
+    }
+  }
+}
